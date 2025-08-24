@@ -1,4 +1,4 @@
-package router
+package go_gen_apis
 
 import (
 	"errors"

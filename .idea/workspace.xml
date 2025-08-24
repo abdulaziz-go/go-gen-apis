@@ -5,14 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="65241ff9-3226-4402-b602-eabc6b284056" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/go.mod" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/handler/item_handler.go" beforeDir="false" afterPath="$PROJECT_DIR$/handler/item_handler.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/repository/db/database.go" beforeDir="false" afterPath="$PROJECT_DIR$/repository/db/database.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/repository/item_repository.go" beforeDir="false" afterPath="$PROJECT_DIR$/repository/item_repository.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/router/router.go" beforeDir="false" afterPath="$PROJECT_DIR$/router/router.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/service/item_service.go" beforeDir="false" afterPath="$PROJECT_DIR$/service/item_service.go" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/utils/response.go" beforeDir="false" afterPath="$PROJECT_DIR$/utils/response.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
