@@ -6,6 +6,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/sirupsen/logrus"
 	"go-gen-apis/repository/db"
+	"strconv"
 	"strings"
 )
 
@@ -144,4 +145,20 @@ func (r *ItemRepository) convertValue(value any) any {
 	default:
 		return fmt.Sprintf("%v", v)
 	}
+}
+
+func (r *ItemRepository) columnExists(columns []string, column string) bool {
+	for _, col := range columns {
+		if col == column {
+			return true
+		}
+	}
+	return false
+}
+
+func (r *ItemRepository) convertID(id string) interface{} {
+	if intID, err := strconv.ParseInt(id, 10, 64); err == nil {
+		return intID
+	}
+	return id
 }
