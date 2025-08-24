@@ -46,18 +46,71 @@ func (s *ItemService) GetSingleItem(ctx context.Context, tableName string, idStr
 		return nil, err
 	}
 
-	fmt.Println(id)
+	item, err := s.repo.GetByID(ctx, tableName, id)
+	if err != nil {
+		logrus.Errorf("service: failed to get item by ID from table %s: %v", tableName, err)
+		return nil, fmt.Errorf("failed to get item: %w", err)
+	}
+	return item, nil
 }
 
 func (s *ItemService) GetItems(ctx context.Context, tableName string, filter *domains.ItemFilter) ([]map[string]any, int, error) {
-	return nil, 0, nil
+	if err := s.validTableName(tableName); err != nil {
+		return nil, 0, err
+	}
+
+	if err := s.validateAndNormalizeFilter(filter); err != nil {
+		return nil, 0, err
+	}
+
+	items, total, err := s.repo.GetAll(ctx, tableName, filter)
+	if err != nil {
+		logrus.Errorf("service: failed to get items from table %s: %v", tableName, err)
+		return nil, 0, fmt.Errorf("failed to get items: %w", err)
+	}
+
+	return items, total, nil
 }
 
-func (s *ItemService) UpdateItem(ctx context.Context, tableName string, id string, req *domains.UpdateItemRequest) (map[string]any, error) {
-	return nil, nil
+func (s *ItemService) UpdateItem(ctx context.Context, tableName string, idStr string, req *domains.UpdateItemRequest) (map[string]any, error) {
+	if err := s.validTableName(tableName); err != nil {
+		return nil, err
+	}
+
+	id, err := s.convertAndValidateID(idStr)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.validateUpdateRequest(req); err != nil {
+		return nil, err
+	}
+
+	item, err := s.repo.Update(ctx, tableName, id, req.Data)
+	if err != nil {
+		logrus.Errorf("service: failed to update item in table %s: %v", tableName, err)
+		return nil, fmt.Errorf("failed to update item: %w", err)
+	}
+
+	return item, nil
 }
 
-func (s *ItemService) DeleteItem(ctx context.Context, tableName string, id string) error {
+func (s *ItemService) DeleteItem(ctx context.Context, tableName string, idStr string) error {
+	if err := s.validTableName(tableName); err != nil {
+		return err
+	}
+
+	id, err := s.convertAndValidateID(idStr)
+	if err != nil {
+		return err
+	}
+
+	err = s.repo.Delete(ctx, tableName, id)
+	if err != nil {
+		logrus.Errorf("service: failed to delete item from table %s: %v", tableName, err)
+		return fmt.Errorf("failed to delete item: %w", err)
+	}
+
 	return nil
 }
 
@@ -111,7 +164,7 @@ func (s *ItemService) validateUpdateRequest(req *domains.UpdateItemRequest) erro
 	return nil
 }
 
-func validateAndNormalizeFilter(filter *domains.ItemFilter) error {
+func (s *ItemService) validateAndNormalizeFilter(filter *domains.ItemFilter) error {
 	if filter == nil {
 		return fmt.Errorf("filter cannot be nil")
 	}
