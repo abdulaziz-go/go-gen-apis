@@ -17,6 +17,10 @@ func NewItemService(repo *repository.ItemRepository) *ItemService {
 }
 
 func (s *ItemService) CreateItem(ctx context.Context, tableName string, req *domains.CreateItemRequest) ([]map[string]any, error) {
+	if err := s.validTableName(tableName); err != nil {
+		return nil, err
+	}
+
 	return nil, nil
 }
 
@@ -49,6 +53,38 @@ func (s *ItemService) validTableName(tableName string) error {
 
 	if !matched {
 		return fmt.Errorf("invalid table name alphanumeric or underscare is required")
+	}
+
+	return nil
+}
+
+func (s *ItemService) validateCreateRequest(req *domains.CreateItemRequest) error {
+	if req == nil {
+		return fmt.Errorf("request cannot be nil")
+	}
+
+	if req.Data == nil || len(req.Data) == 0 {
+		return fmt.Errorf("data cannot be empty")
+	}
+
+	if len(req.Data) > 100 {
+		return fmt.Errorf("too many fields: maximum 100 fields allowed")
+	}
+
+	return nil
+}
+
+func (s *ItemService) validateUpdateRequest(req *domains.UpdateItemRequest) error {
+	if req == nil {
+		return fmt.Errorf("request cannot be nil")
+	}
+
+	if req.Data == nil || len(req.Data) == 0 {
+		return fmt.Errorf("data cannot be empty")
+	}
+
+	if len(req.Data) > 100 {
+		return fmt.Errorf("too many fields: maximum 100 fields allowed")
 	}
 
 	return nil

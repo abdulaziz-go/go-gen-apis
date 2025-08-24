@@ -13,7 +13,7 @@ import (
 )
 
 type ItemHandler struct {
-	service service.ItemService
+	service *service.ItemService
 }
 
 func NewItemHandler(service *service.ItemService) ItemHandler {
