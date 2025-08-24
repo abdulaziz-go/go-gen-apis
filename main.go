@@ -1,4 +1,4 @@
-package go_gen_apis
+package genapis
 
 import (
 	"errors"
