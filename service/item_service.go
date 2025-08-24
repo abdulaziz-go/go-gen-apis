@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"go-gen-apis/domains"
 	"go-gen-apis/repository"
 	"regexp"
@@ -23,11 +24,29 @@ func (s *ItemService) CreateItem(ctx context.Context, tableName string, req *dom
 		return nil, err
 	}
 
-	return nil, nil
+	if err := s.validateCreateRequest(req); err != nil {
+		return nil, err
+	}
+	items, err := s.repo.Create(ctx, tableName, req.Data)
+	if err != nil {
+		logrus.Errorf("service: failed to create items in table %s: %v", tableName, err)
+		return nil, fmt.Errorf("failed to create items: %w", err)
+	}
+
+	return items, nil
 }
 
-func (s *ItemService) GetSingleItem(ctx context.Context, tableName string, id string) (map[string]any, error) {
-	return nil, nil
+func (s *ItemService) GetSingleItem(ctx context.Context, tableName string, idString string) (map[string]any, error) {
+	if err := s.validTableName(tableName); err != nil {
+		return nil, err
+	}
+
+	id, err := s.convertAndValidateID(idString)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println(id)
 }
 
 func (s *ItemService) GetItems(ctx context.Context, tableName string, filter *domains.ItemFilter) ([]map[string]any, int, error) {

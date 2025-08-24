@@ -13,36 +13,36 @@ type GenericItem struct {
 }
 
 type CreateItemRequest struct {
-	Data map[string]interface{} `json:"data" binding:"required"`
+	Data []map[string]any `json:"data" binding:"required"`
 }
 
 type UpdateItemRequest struct {
-	Data map[string]interface{} `json:"data" binding:"required"`
+	Data map[string]any `json:"data" binding:"required"`
 }
 
 type ItemFilter struct {
-	Limit   int                    `json:"limit" form:"limit"`
-	Offset  int                    `json:"offset" form:"offset"`
-	OrderBy string                 `json:"order_by" form:"order_by"`
-	Sort    string                 `json:"sort" form:"sort"`
-	Filters map[string]interface{} `json:"filters" form:"filters"`
+	Limit   int            `json:"limit" form:"limit"`
+	Offset  int            `json:"offset" form:"offset"`
+	OrderBy string         `json:"order_by" form:"order_by"`
+	Sort    string         `json:"sort" form:"sort"`
+	Filters map[string]any `json:"filters" form:"filters"`
 }
 
 type ItemResponse struct {
-	Success bool                   `json:"success"`
-	Data    map[string]interface{} `json:"data,omitempty"`
-	Message string                 `json:"message,omitempty"`
-	Error   string                 `json:"error,omitempty"`
+	Success bool           `json:"success"`
+	Data    map[string]any `json:"data,omitempty"`
+	Message string         `json:"message,omitempty"`
+	Error   string         `json:"error,omitempty"`
 }
 
 type ItemsListResponse struct {
-	Success bool                     `json:"success"`
-	Data    []map[string]interface{} `json:"data"`
-	Total   int                      `json:"total"`
-	Limit   int                      `json:"limit"`
-	Offset  int                      `json:"offset"`
-	Message string                   `json:"message,omitempty"`
-	Error   string                   `json:"error,omitempty"`
+	Success bool             `json:"success"`
+	Data    []map[string]any `json:"data"`
+	Total   int              `json:"total"`
+	Limit   int              `json:"limit"`
+	Offset  int              `json:"offset"`
+	Message string           `json:"message,omitempty"`
+	Error   string           `json:"error,omitempty"`
 }
 
 type ErrorResponse struct {
