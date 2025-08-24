@@ -40,7 +40,7 @@ func (r *ItemRepository) Create(ctx context.Context, tableName string, dataArray
 	for _, data := range dataArray {
 		var insertColumns []string
 		var placeholders []string
-		var values []interface{}
+		var values []any
 		paramIndex := 1
 
 		for _, col := range columns {
@@ -79,7 +79,7 @@ func (r *ItemRepository) Create(ctx context.Context, tableName string, dataArray
 	return results, nil
 }
 
-func (r *ItemRepository) GetByID(ctx context.Context, tableName string, id interface{}) (map[string]interface{}, error) {
+func (r *ItemRepository) GetByID(ctx context.Context, tableName string, id any) (map[string]any, error) {
 	columns, err := r.db.GetTableInfo(ctx, tableName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get table info: %w", err)
@@ -107,7 +107,7 @@ func (r *ItemRepository) GetByID(ctx context.Context, tableName string, id inter
 	return result, nil
 }
 
-func (r *ItemRepository) GetAll(ctx context.Context, tableName string, filter *domains.ItemFilter) ([]map[string]interface{}, int, error) {
+func (r *ItemRepository) GetAll(ctx context.Context, tableName string, filter *domains.ItemFilter) ([]map[string]any, int, error) {
 	columns, err := r.db.GetTableInfo(ctx, tableName)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to get table info: %w", err)
@@ -115,15 +115,27 @@ func (r *ItemRepository) GetAll(ctx context.Context, tableName string, filter *d
 
 	baseQuery := fmt.Sprintf("FROM %s", tableName)
 	var whereConditions []string
-	var args []interface{}
+	var args []any
 	argIndex := 1
 
 	if filter.Filters != nil && len(filter.Filters) > 0 {
 		for column, value := range filter.Filters {
 			if r.columnExists(columns, column) {
-				whereConditions = append(whereConditions, fmt.Sprintf("%s = $%d", column, argIndex))
-				args = append(args, value)
-				argIndex++
+				switch v := value.(type) {
+				case []any:
+					placeholders := make([]string, len(v))
+					for i := range v {
+						placeholders[i] = fmt.Sprintf("$%d", argIndex+i)
+					}
+					whereConditions = append(whereConditions,
+						fmt.Sprintf("%s IN (%s)", column, strings.Join(placeholders, ",")))
+					args = append(args, v...)
+					argIndex += len(v)
+				default:
+					whereConditions = append(whereConditions, fmt.Sprintf("%s = $%d", column, argIndex))
+					args = append(args, v)
+					argIndex++
+				}
 			}
 		}
 	}
@@ -141,7 +153,6 @@ func (r *ItemRepository) GetAll(ctx context.Context, tableName string, filter *d
 	}
 
 	selectQuery := "SELECT * " + baseQuery
-
 	if filter.OrderBy != "" && r.columnExists(columns, filter.OrderBy) {
 		sort := domains.SORT_ASC
 		if strings.ToUpper(filter.Sort) == domains.SORT_DESC {
@@ -157,7 +168,6 @@ func (r *ItemRepository) GetAll(ctx context.Context, tableName string, filter *d
 		args = append(args, filter.Limit)
 		argIndex++
 	}
-
 	if filter.Offset > 0 {
 		selectQuery += fmt.Sprintf(" OFFSET $%d", argIndex)
 		args = append(args, filter.Offset)
@@ -170,7 +180,7 @@ func (r *ItemRepository) GetAll(ctx context.Context, tableName string, filter *d
 	}
 	defer rows.Close()
 
-	var items []map[string]interface{}
+	var items []map[string]any
 	for rows.Next() {
 		item, err := r.parseRowsToMap(rows, columns)
 		if err != nil {
@@ -188,7 +198,7 @@ func (r *ItemRepository) GetAll(ctx context.Context, tableName string, filter *d
 	return items, total, nil
 }
 
-func (r *ItemRepository) Update(ctx context.Context, tableName string, id interface{}, data map[string]interface{}) (map[string]interface{}, error) {
+func (r *ItemRepository) Update(ctx context.Context, tableName string, id any, data map[string]any) (map[string]any, error) {
 	columns, err := r.db.GetTableInfo(ctx, tableName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get table info: %w", err)
@@ -201,7 +211,7 @@ func (r *ItemRepository) Update(ctx context.Context, tableName string, id interf
 	}
 
 	var updateColumns []string
-	var values []interface{}
+	var values []any
 	paramIndex := 1
 
 	for _, col := range columns {
@@ -243,7 +253,7 @@ func (r *ItemRepository) Update(ctx context.Context, tableName string, id interf
 	return result, nil
 }
 
-func (r *ItemRepository) Delete(ctx context.Context, tableName string, id interface{}) error {
+func (r *ItemRepository) Delete(ctx context.Context, tableName string, id any) error {
 	pkColumn, err := r.db.GetPrimaryKeyColumn(ctx, tableName)
 	if err != nil {
 		logrus.Warnf("could not get primary key for table %s: %v", tableName, err)
@@ -280,7 +290,7 @@ func (r *ItemRepository) parseRowToMap(row pgx.Row, columns []string) (map[strin
 		return nil, err
 	}
 
-	result := make(map[string]interface{})
+	result := make(map[string]any)
 	for i, col := range columns {
 		result[col] = r.convertValue(values[i])
 	}
@@ -288,9 +298,9 @@ func (r *ItemRepository) parseRowToMap(row pgx.Row, columns []string) (map[strin
 	return result, nil
 }
 
-func (r *ItemRepository) parseRowsToMap(rows pgx.Rows, columns []string) (map[string]interface{}, error) {
-	values := make([]interface{}, len(columns))
-	valuePtrs := make([]interface{}, len(columns))
+func (r *ItemRepository) parseRowsToMap(rows pgx.Rows, columns []string) (map[string]any, error) {
+	values := make([]any, len(columns))
+	valuePtrs := make([]any, len(columns))
 
 	for i := range values {
 		valuePtrs[i] = &values[i]
@@ -301,7 +311,7 @@ func (r *ItemRepository) parseRowsToMap(rows pgx.Rows, columns []string) (map[st
 		return nil, err
 	}
 
-	result := make(map[string]interface{})
+	result := make(map[string]any)
 	for i, col := range columns {
 		result[col] = r.convertValue(values[i])
 	}
@@ -345,7 +355,7 @@ func (r *ItemRepository) columnExists(columns []string, column string) bool {
 	return false
 }
 
-func (r *ItemRepository) convertID(id string) interface{} {
+func (r *ItemRepository) convertID(id string) any {
 	if intID, err := strconv.ParseInt(id, 10, 64); err == nil {
 		return intID
 	}

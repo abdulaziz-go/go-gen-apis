@@ -113,16 +113,15 @@ func (h *ItemHandler) GetItems(c *gin.Context) {
 		if key == "limit" || key == "offset" || key == "order_by" || key == "sort" {
 			continue
 		}
-		if len(values) > 0 && values[0] != "" {
-			value := values[0]
-			if intVal, err := strconv.ParseInt(value, 10, 64); err == nil {
-				filter.Filters[key] = intVal
-			} else if floatVal, err := strconv.ParseFloat(value, 64); err == nil {
-				filter.Filters[key] = floatVal
-			} else if boolVal, err := strconv.ParseBool(value); err == nil {
-				filter.Filters[key] = boolVal
+		if len(values) > 0 {
+			if len(values) == 1 {
+				filter.Filters[key] = utils.ParseValue(values[0])
 			} else {
-				filter.Filters[key] = value
+				parsedVals := make([]interface{}, 0, len(values))
+				for _, v := range values {
+					parsedVals = append(parsedVals, utils.ParseValue(v))
+				}
+				filter.Filters[key] = parsedVals
 			}
 		}
 	}
