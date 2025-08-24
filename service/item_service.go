@@ -6,6 +6,8 @@ import (
 	"go-gen-apis/domains"
 	"go-gen-apis/repository"
 	"regexp"
+	"strconv"
+	"strings"
 )
 
 type ItemService struct {
@@ -88,4 +90,61 @@ func (s *ItemService) validateUpdateRequest(req *domains.UpdateItemRequest) erro
 	}
 
 	return nil
+}
+
+func validateAndNormalizeFilter(filter *domains.ItemFilter) error {
+	if filter == nil {
+		return fmt.Errorf("filter cannot be nil")
+	}
+	if filter.Limit <= 0 {
+		filter.Limit = 50
+	}
+	if filter.Limit > 1000 {
+		filter.Limit = 1000 // for preventing performance problems
+	}
+
+	if filter.Offset < 0 {
+		filter.Offset = 0
+	}
+
+	if filter.OrderBy != "" {
+		matched, _ := regexp.MatchString("^[a-zA-Z_][a-zA-Z0-9_]*$", filter.OrderBy)
+		if !matched {
+			return fmt.Errorf("invalid order by column name")
+		}
+	}
+
+	if filter.Sort != "" {
+		sort := strings.ToUpper(filter.Sort)
+		if sort != domains.SORT_ASC && sort != domains.SORT_DESC {
+			return fmt.Errorf("invalid sort direction: must be ASC or DESC")
+		}
+		filter.Sort = sort
+	}
+
+	return nil
+}
+
+func (s *ItemService) convertAndValidateID(idStr string) (interface{}, error) {
+	if idStr == "" {
+		return nil, fmt.Errorf("ID cannot be empty")
+	}
+
+	if intID, err := strconv.ParseInt(idStr, 10, 64); err == nil {
+		if intID <= 0 {
+			return nil, fmt.Errorf("invalid ID: must be positive")
+		}
+		return intID, nil
+	}
+
+	if len(idStr) > 255 {
+		return nil, fmt.Errorf("ID too long")
+	}
+
+	matched, _ := regexp.MatchString("^[a-zA-Z0-9_-]+$", idStr)
+	if !matched {
+		return nil, fmt.Errorf("invalid ID format: only alphanumeric characters, underscores, and hyphens allowed")
+	}
+
+	return idStr, nil
 }

@@ -2,6 +2,11 @@ package domains
 
 import "time"
 
+const (
+	SORT_ASC  = "ASC"
+	SORT_DESC = "DESC"
+)
+
 type GenericItem struct {
 	Data      map[string]any `json:"data"`
 	TableName string         `json:"table_name,omitempty"`
