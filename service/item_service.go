@@ -3,9 +3,9 @@ package service
 import (
 	"context"
 	"fmt"
+	"github.com/abdulaziz-go/go-gen-apis/domains"
+	"github.com/abdulaziz-go/go-gen-apis/repository"
 	"github.com/sirupsen/logrus"
-	"go-gen-apis/domains"
-	"go-gen-apis/repository"
 	"regexp"
 	"strconv"
 	"strings"

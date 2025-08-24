@@ -3,9 +3,9 @@ package db
 import (
 	"context"
 	"fmt"
+	"github.com/abdulaziz-go/go-gen-apis/config"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/sirupsen/logrus"
-	"go-gen-apis/config"
 	"time"
 )
 

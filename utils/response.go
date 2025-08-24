@@ -1,8 +1,8 @@
 package utils
 
 import (
+	"github.com/abdulaziz-go/go-gen-apis/domains"
 	"github.com/gin-gonic/gin"
-	"go-gen-apis/domains"
 	"net/http"
 )
 

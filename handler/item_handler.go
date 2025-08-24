@@ -2,9 +2,9 @@ package handler
 
 import (
 	"fmt"
-	"go-gen-apis/domains"
-	"go-gen-apis/service"
-	"go-gen-apis/utils"
+	"github.com/abdulaziz-go/go-gen-apis/domains"
+	"github.com/abdulaziz-go/go-gen-apis/service"
+	"github.com/abdulaziz-go/go-gen-apis/utils"
 	"strconv"
 	"strings"
 
