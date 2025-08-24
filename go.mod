@@ -1,4 +1,4 @@
-module github.com/abdulaziz-go/github.com/abdulaziz-go/go-gen-apis
+module github.com/abdulaziz-go/go-gen-apis
 
 go 1.23.0
 

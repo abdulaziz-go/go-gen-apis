@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
-	"github.com/abdulaziz-go/github.com/abdulaziz-go/go-gen-apis/domains"
+	"github.com/abdulaziz-go/go-gen-apis/domains"
 	"github.com/abdulaziz-go/go-gen-apis/repository/db"
 	"github.com/jackc/pgx/v5"
 	"github.com/sirupsen/logrus"
