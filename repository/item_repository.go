@@ -60,6 +60,7 @@ func (r *ItemRepository) Create(ctx context.Context, tableName string, dataArray
 			logrus.Warnf("no valid columns found for insert in one of the data items")
 			continue
 		}
+
 		query := fmt.Sprintf(
 			"INSERT INTO %s (%s) VALUES (%s) RETURNING *",
 			tableName,
@@ -92,7 +93,13 @@ func (r *ItemRepository) GetByID(ctx context.Context, tableName string, id any) 
 		pkColumn = "id"
 	}
 
-	query := fmt.Sprintf("SELECT * FROM %s WHERE %s = $1", tableName, pkColumn)
+	var selectColumns []string
+	for _, col := range columns {
+		selectColumns = append(selectColumns, fmt.Sprintf("%s::text as %s", col, col))
+	}
+
+	query := fmt.Sprintf("SELECT %s FROM %s WHERE %s = $1",
+		strings.Join(selectColumns, ", "), tableName, pkColumn)
 
 	row := r.db.Pool.QueryRow(ctx, query, id)
 
@@ -153,7 +160,13 @@ func (r *ItemRepository) GetAll(ctx context.Context, tableName string, filter *d
 		return nil, 0, fmt.Errorf("failed to count items: %w", err)
 	}
 
-	selectQuery := "SELECT * " + baseQuery
+	var selectColumns []string
+	for _, col := range columns {
+		selectColumns = append(selectColumns, fmt.Sprintf("%s::text as %s", col, col))
+	}
+
+	selectQuery := fmt.Sprintf("SELECT %s %s", strings.Join(selectColumns, ", "), baseQuery)
+
 	if filter.OrderBy != "" && r.columnExists(columns, filter.OrderBy) {
 		sort := domains.SORT_ASC
 		if strings.ToUpper(filter.Sort) == domains.SORT_DESC {
@@ -197,31 +210,6 @@ func (r *ItemRepository) GetAll(ctx context.Context, tableName string, filter *d
 	}
 
 	return items, total, nil
-}
-
-const GetColumnTypeQuery = `
-SELECT column_name, data_type 
-        FROM information_schema.columns 
-        WHERE table_name = $1 AND table_schema = 'public'
-`
-
-func (r *ItemRepository) getColumnTypes(ctx context.Context, tableName string) (map[string]string, error) {
-	rows, err := r.db.Pool.Query(ctx, GetColumnTypeQuery, tableName)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	columnTypes := make(map[string]string)
-	for rows.Next() {
-		var columnName, dataType string
-		if err := rows.Scan(&columnName, &dataType); err != nil {
-			return nil, err
-		}
-		columnTypes[columnName] = dataType
-	}
-
-	return columnTypes, nil
 }
 
 func (r *ItemRepository) Update(ctx context.Context, tableName string, id any, data map[string]any) (map[string]any, error) {
@@ -303,6 +291,38 @@ func (r *ItemRepository) Delete(ctx context.Context, tableName string, id any) e
 	return nil
 }
 
+const GetColumnTypeQuery = `
+SELECT 
+    column_name, 
+    data_type,
+    udt_name,
+    CASE 
+        WHEN data_type = 'USER-DEFINED' THEN udt_name
+        ELSE data_type 
+    END as actual_type
+FROM information_schema.columns 
+WHERE table_name = $1 AND table_schema = 'public'
+`
+
+func (r *ItemRepository) getColumnTypes(ctx context.Context, tableName string) (map[string]string, error) {
+	rows, err := r.db.Pool.Query(ctx, GetColumnTypeQuery, tableName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	columnTypes := make(map[string]string)
+	for rows.Next() {
+		var columnName, dataType, udtName, actualType string
+		if err := rows.Scan(&columnName, &dataType, &udtName, &actualType); err != nil {
+			return nil, err
+		}
+		columnTypes[columnName] = actualType
+	}
+
+	return columnTypes, nil
+}
+
 func (r *ItemRepository) shouldParseAsJSON(columnName, dataType string, value any) bool {
 	if dataType != "jsonb" {
 		return false
@@ -345,20 +365,23 @@ func (r *ItemRepository) parseRowToMap(row pgx.Row, columns []string, tableName 
 	result := make(map[string]any)
 	for i, column := range columns {
 		value := values[i]
-		if r.shouldParseAsJSON(column, columnTypes[column], value) {
-			if strValue, ok := value.(string); ok && strValue != "" {
+
+		processedValue := r.processColumnValue(value, column, columnTypes[column])
+
+		if r.shouldParseAsJSON(column, columnTypes[column], processedValue) {
+			if strValue, ok := processedValue.(string); ok && strValue != "" {
 				var jsonValue any
 				if err := json.Unmarshal([]byte(strValue), &jsonValue); err != nil {
 					logrus.Warnf("failed to unmarshal JSONB field %s: %v", column, err)
-					result[column] = value
+					result[column] = processedValue
 				} else {
 					result[column] = jsonValue
 				}
 			} else {
-				result[column] = value
+				result[column] = processedValue
 			}
 		} else {
-			result[column] = value
+			result[column] = processedValue
 		}
 	}
 
@@ -386,24 +409,72 @@ func (r *ItemRepository) parseRowsToMap(rows pgx.Rows, columns []string, tableNa
 	result := make(map[string]any)
 	for i, column := range columns {
 		value := values[i]
-		if r.shouldParseAsJSON(column, columnTypes[column], value) {
-			if strValue, ok := value.(string); ok && strValue != "" {
+
+		processedValue := r.processColumnValue(value, column, columnTypes[column])
+
+		if r.shouldParseAsJSON(column, columnTypes[column], processedValue) {
+			if strValue, ok := processedValue.(string); ok && strValue != "" {
 				var jsonValue any
 				if err := json.Unmarshal([]byte(strValue), &jsonValue); err != nil {
 					logrus.Warnf("failed to unmarshal JSONB field %s: %v", column, err)
-					result[column] = value
+					result[column] = processedValue
 				} else {
 					result[column] = jsonValue
 				}
 			} else {
-				result[column] = value
+				result[column] = processedValue
 			}
 		} else {
-			result[column] = value
+			result[column] = processedValue
 		}
 	}
 
 	return result, nil
+}
+
+func (r *ItemRepository) convertStringToAppropriateType(strValue, dataType string) any {
+	if strValue == "" {
+		return nil
+	}
+
+	switch dataType {
+	case "integer", "int4", "int8", "bigint", "smallint":
+		if intVal, err := strconv.ParseInt(strValue, 10, 64); err == nil {
+			return intVal
+		}
+	case "numeric", "decimal", "real", "double precision", "float4", "float8":
+		if floatVal, err := strconv.ParseFloat(strValue, 64); err == nil {
+			return floatVal
+		}
+	case "boolean", "bool":
+		if boolVal, err := strconv.ParseBool(strValue); err == nil {
+			return boolVal
+		}
+	case "uuid":
+		return strValue
+	case "jsonb", "json":
+		return strValue
+	default:
+		return strValue
+	}
+
+	return strValue
+}
+
+func (r *ItemRepository) processColumnValue(value any, columnName, dataType string) any {
+	if value == nil {
+		return nil
+	}
+
+	switch v := value.(type) {
+	case string:
+		return r.convertStringToAppropriateType(v, dataType)
+	case []byte:
+		strValue := string(v)
+		return r.convertStringToAppropriateType(strValue, dataType)
+	default:
+		return r.convertValue(v)
+	}
 }
 
 func (r *ItemRepository) convertValue(value any) any {
