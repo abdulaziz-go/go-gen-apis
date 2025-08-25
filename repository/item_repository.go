@@ -303,6 +303,27 @@ func (r *ItemRepository) Delete(ctx context.Context, tableName string, id any) e
 	return nil
 }
 
+func (r *ItemRepository) shouldParseAsJSON(columnName, dataType string, value any) bool {
+	if dataType != "jsonb" {
+		return false
+	}
+
+	if strings.Contains(strings.ToLower(columnName), "id") {
+		return false
+	}
+
+	if value == nil {
+		return false
+	}
+
+	if strValue, ok := value.(string); ok {
+		strValue = strings.TrimSpace(strValue)
+		return strValue != "" && (strings.HasPrefix(strValue, "{") || strings.HasPrefix(strValue, "["))
+	}
+
+	return false
+}
+
 func (r *ItemRepository) parseRowToMap(row pgx.Row, columns []string, tableName string) (map[string]any, error) {
 	columnTypes, err := r.getColumnTypes(context.Background(), tableName)
 	if err != nil {
@@ -324,7 +345,7 @@ func (r *ItemRepository) parseRowToMap(row pgx.Row, columns []string, tableName 
 	result := make(map[string]any)
 	for i, column := range columns {
 		value := values[i]
-		if columnTypes[column] == "jsonb" && value != nil {
+		if r.shouldParseAsJSON(column, columnTypes[column], value) {
 			if strValue, ok := value.(string); ok && strValue != "" {
 				var jsonValue any
 				if err := json.Unmarshal([]byte(strValue), &jsonValue); err != nil {
@@ -365,7 +386,7 @@ func (r *ItemRepository) parseRowsToMap(rows pgx.Rows, columns []string, tableNa
 	result := make(map[string]any)
 	for i, column := range columns {
 		value := values[i]
-		if columnTypes[column] == "jsonb" && value != nil {
+		if r.shouldParseAsJSON(column, columnTypes[column], value) {
 			if strValue, ok := value.(string); ok && strValue != "" {
 				var jsonValue any
 				if err := json.Unmarshal([]byte(strValue), &jsonValue); err != nil {
