@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"github.com/abdulaziz-go/go-gen-apis/domains"
 	"github.com/abdulaziz-go/go-gen-apis/repository/db"
+	"github.com/abdulaziz-go/go-gen-apis/utils"
 	"github.com/jackc/pgx/v5"
 	"github.com/sirupsen/logrus"
-	"strconv"
 	"strings"
 )
 
@@ -18,10 +18,6 @@ type ItemRepository struct {
 
 func NewItemRepository(db *db.DB) *ItemRepository {
 	return &ItemRepository{db: db}
-}
-
-func (r *ItemRepository) quoteIdentifier(identifier string) string {
-	return fmt.Sprintf(`"%s"`, identifier)
 }
 
 func (r *ItemRepository) Create(ctx context.Context, tableName string, dataArray []map[string]any) ([]map[string]any, error) {
@@ -436,35 +432,6 @@ func (r *ItemRepository) parseRowsToMap(rows pgx.Rows, columns []string, tableNa
 	return result, nil
 }
 
-func (r *ItemRepository) convertStringToAppropriateType(strValue, dataType string) any {
-	if strValue == "" {
-		return nil
-	}
-
-	switch dataType {
-	case "integer", "int4", "int8", "bigint", "smallint":
-		if intVal, err := strconv.ParseInt(strValue, 10, 64); err == nil {
-			return intVal
-		}
-	case "numeric", "decimal", "real", "double precision", "float4", "float8":
-		if floatVal, err := strconv.ParseFloat(strValue, 64); err == nil {
-			return floatVal
-		}
-	case "boolean", "bool":
-		if boolVal, err := strconv.ParseBool(strValue); err == nil {
-			return boolVal
-		}
-	case "uuid":
-		return strValue
-	case "jsonb", "json":
-		return strValue
-	default:
-		return strValue
-	}
-
-	return strValue
-}
-
 func (r *ItemRepository) processColumnValue(value any, columnName, dataType string) any {
 	if value == nil {
 		return nil
@@ -472,39 +439,12 @@ func (r *ItemRepository) processColumnValue(value any, columnName, dataType stri
 
 	switch v := value.(type) {
 	case string:
-		return r.convertStringToAppropriateType(v, dataType)
+		return utils.ConvertStringToAppropriateType(v, dataType)
 	case []byte:
 		strValue := string(v)
-		return r.convertStringToAppropriateType(strValue, dataType)
+		return utils.ConvertStringToAppropriateType(strValue, dataType)
 	default:
-		return r.convertValue(v)
-	}
-}
-
-func (r *ItemRepository) convertValue(value any) any {
-	if value == nil {
-		return nil
-	}
-
-	switch v := value.(type) {
-	case []byte:
-		return string(v)
-	case int64:
-		return v
-	case int32:
-		return int64(v)
-	case int:
-		return int64(v)
-	case float32:
-		return float64(v)
-	case float64:
-		return v
-	case bool:
-		return v
-	case string:
-		return v
-	default:
-		return fmt.Sprintf("%v", v)
+		return utils.ConvertValue(v)
 	}
 }
 
@@ -517,9 +457,6 @@ func (r *ItemRepository) columnExists(columns []string, column string) bool {
 	return false
 }
 
-func (r *ItemRepository) convertID(id string) any {
-	if intID, err := strconv.ParseInt(id, 10, 64); err == nil {
-		return intID
-	}
-	return id
+func (r *ItemRepository) quoteIdentifier(identifier string) string {
+	return fmt.Sprintf(`"%s"`, identifier)
 }
