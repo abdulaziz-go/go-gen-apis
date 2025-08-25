@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/abdulaziz-go/go-gen-apis/domains"
 	"github.com/abdulaziz-go/go-gen-apis/repository/db"
@@ -68,7 +69,7 @@ func (r *ItemRepository) Create(ctx context.Context, tableName string, dataArray
 
 		row := r.db.Pool.QueryRow(ctx, query, values...)
 
-		result, err := r.parseRowToMap(row, columns)
+		result, err := r.parseRowToMap(row, columns, tableName)
 		if err != nil {
 			logrus.Errorf("failed to create item in table %s: %v", tableName, err)
 			return nil, fmt.Errorf("failed to create item: %w", err)
@@ -95,7 +96,7 @@ func (r *ItemRepository) GetByID(ctx context.Context, tableName string, id any) 
 
 	row := r.db.Pool.QueryRow(ctx, query, id)
 
-	result, err := r.parseRowToMap(row, columns)
+	result, err := r.parseRowToMap(row, columns, tableName)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, fmt.Errorf("item not found")
@@ -182,7 +183,7 @@ func (r *ItemRepository) GetAll(ctx context.Context, tableName string, filter *d
 
 	var items []map[string]any
 	for rows.Next() {
-		item, err := r.parseRowsToMap(rows, columns)
+		item, err := r.parseRowsToMap(rows, columns, tableName)
 		if err != nil {
 			logrus.Errorf("failed to scan item from table %s: %v", tableName, err)
 			continue
@@ -196,6 +197,31 @@ func (r *ItemRepository) GetAll(ctx context.Context, tableName string, filter *d
 	}
 
 	return items, total, nil
+}
+
+const GetColumnTypeQuery = `
+SELECT column_name, data_type 
+        FROM information_schema.columns 
+        WHERE table_name = $1 AND table_schema = 'public'
+`
+
+func (r *ItemRepository) getColumnTypes(ctx context.Context, tableName string) (map[string]string, error) {
+	rows, err := r.db.Pool.Query(ctx, GetColumnTypeQuery, tableName)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	columnTypes := make(map[string]string)
+	for rows.Next() {
+		var columnName, dataType string
+		if err := rows.Scan(&columnName, &dataType); err != nil {
+			return nil, err
+		}
+		columnTypes[columnName] = dataType
+	}
+
+	return columnTypes, nil
 }
 
 func (r *ItemRepository) Update(ctx context.Context, tableName string, id any, data map[string]any) (map[string]any, error) {
@@ -241,7 +267,7 @@ func (r *ItemRepository) Update(ctx context.Context, tableName string, id any, d
 
 	row := r.db.Pool.QueryRow(ctx, query, values...)
 
-	result, err := r.parseRowToMap(row, columns)
+	result, err := r.parseRowToMap(row, columns, tableName)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, fmt.Errorf("item not found")
@@ -277,43 +303,83 @@ func (r *ItemRepository) Delete(ctx context.Context, tableName string, id any) e
 	return nil
 }
 
-func (r *ItemRepository) parseRowToMap(row pgx.Row, columns []string) (map[string]any, error) {
-	values := make([]any, len(columns))
-	valuePtrs := make([]any, len(columns))
-
-	for i := range values {
-		valuePtrs[i] = &values[i]
+func (r *ItemRepository) parseRowToMap(row pgx.Row, columns []string, tableName string) (map[string]any, error) {
+	columnTypes, err := r.getColumnTypes(context.Background(), tableName)
+	if err != nil {
+		logrus.Warnf("could not get column types for table %s: %v", tableName, err)
+		columnTypes = make(map[string]string)
 	}
 
-	err := row.Scan(valuePtrs...)
-	if err != nil {
+	values := make([]any, len(columns))
+	scanTargets := make([]any, len(columns))
+
+	for i := range values {
+		scanTargets[i] = &values[i]
+	}
+
+	if err := row.Scan(scanTargets...); err != nil {
 		return nil, err
 	}
 
 	result := make(map[string]any)
-	for i, col := range columns {
-		result[col] = r.convertValue(values[i])
+	for i, column := range columns {
+		value := values[i]
+		if columnTypes[column] == "jsonb" && value != nil {
+			if strValue, ok := value.(string); ok && strValue != "" {
+				var jsonValue any
+				if err := json.Unmarshal([]byte(strValue), &jsonValue); err != nil {
+					logrus.Warnf("failed to unmarshal JSONB field %s: %v", column, err)
+					result[column] = value
+				} else {
+					result[column] = jsonValue
+				}
+			} else {
+				result[column] = value
+			}
+		} else {
+			result[column] = value
+		}
 	}
 
 	return result, nil
 }
 
-func (r *ItemRepository) parseRowsToMap(rows pgx.Rows, columns []string) (map[string]any, error) {
-	values := make([]any, len(columns))
-	valuePtrs := make([]any, len(columns))
-
-	for i := range values {
-		valuePtrs[i] = &values[i]
+func (r *ItemRepository) parseRowsToMap(rows pgx.Rows, columns []string, tableName string) (map[string]any, error) {
+	columnTypes, err := r.getColumnTypes(context.Background(), tableName)
+	if err != nil {
+		logrus.Warnf("could not get column types for table %s: %v", tableName, err)
+		columnTypes = make(map[string]string)
 	}
 
-	err := rows.Scan(valuePtrs...)
-	if err != nil {
+	values := make([]any, len(columns))
+	scanTargets := make([]any, len(columns))
+
+	for i := range values {
+		scanTargets[i] = &values[i]
+	}
+
+	if err := rows.Scan(scanTargets...); err != nil {
 		return nil, err
 	}
 
 	result := make(map[string]any)
-	for i, col := range columns {
-		result[col] = r.convertValue(values[i])
+	for i, column := range columns {
+		value := values[i]
+		if columnTypes[column] == "jsonb" && value != nil {
+			if strValue, ok := value.(string); ok && strValue != "" {
+				var jsonValue any
+				if err := json.Unmarshal([]byte(strValue), &jsonValue); err != nil {
+					logrus.Warnf("failed to unmarshal JSONB field %s: %v", column, err)
+					result[column] = value
+				} else {
+					result[column] = jsonValue
+				}
+			} else {
+				result[column] = value
+			}
+		} else {
+			result[column] = value
+		}
 	}
 
 	return result, nil
