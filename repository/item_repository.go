@@ -20,6 +20,10 @@ func NewItemRepository(db *db.DB) *ItemRepository {
 	return &ItemRepository{db: db}
 }
 
+func (r *ItemRepository) quoteIdentifier(identifier string) string {
+	return fmt.Sprintf(`"%s"`, identifier)
+}
+
 func (r *ItemRepository) Create(ctx context.Context, tableName string, dataArray []map[string]any) ([]map[string]any, error) {
 	if len(dataArray) == 0 {
 		return nil, fmt.Errorf("no data provided for creation")
@@ -49,7 +53,7 @@ func (r *ItemRepository) Create(ctx context.Context, tableName string, dataArray
 				continue
 			}
 			if value, exists := data[col]; exists {
-				insertColumns = append(insertColumns, col)
+				insertColumns = append(insertColumns, r.quoteIdentifier(col))
 				placeholders = append(placeholders, fmt.Sprintf("$%d", paramIndex))
 				values = append(values, value)
 				paramIndex++
@@ -63,7 +67,7 @@ func (r *ItemRepository) Create(ctx context.Context, tableName string, dataArray
 
 		query := fmt.Sprintf(
 			"INSERT INTO %s (%s) VALUES (%s) RETURNING *",
-			tableName,
+			r.quoteIdentifier(tableName),
 			strings.Join(insertColumns, ", "),
 			strings.Join(placeholders, ", "),
 		)
@@ -95,11 +99,11 @@ func (r *ItemRepository) GetByID(ctx context.Context, tableName string, id any) 
 
 	var selectColumns []string
 	for _, col := range columns {
-		selectColumns = append(selectColumns, fmt.Sprintf("%s::text as %s", col, col))
+		selectColumns = append(selectColumns, fmt.Sprintf("%s::text as %s", r.quoteIdentifier(col), r.quoteIdentifier(col)))
 	}
 
 	query := fmt.Sprintf("SELECT %s FROM %s WHERE %s = $1",
-		strings.Join(selectColumns, ", "), tableName, pkColumn)
+		strings.Join(selectColumns, ", "), r.quoteIdentifier(tableName), r.quoteIdentifier(pkColumn))
 
 	row := r.db.Pool.QueryRow(ctx, query, id)
 
@@ -121,7 +125,7 @@ func (r *ItemRepository) GetAll(ctx context.Context, tableName string, filter *d
 		return nil, 0, fmt.Errorf("failed to get table info: %w", err)
 	}
 
-	baseQuery := fmt.Sprintf("FROM %s", tableName)
+	baseQuery := fmt.Sprintf("FROM %s", r.quoteIdentifier(tableName))
 	var whereConditions []string
 	var args []any
 	argIndex := 1
@@ -136,11 +140,11 @@ func (r *ItemRepository) GetAll(ctx context.Context, tableName string, filter *d
 						placeholders[i] = fmt.Sprintf("$%d", argIndex+i)
 					}
 					whereConditions = append(whereConditions,
-						fmt.Sprintf("%s IN (%s)", column, strings.Join(placeholders, ",")))
+						fmt.Sprintf("%s IN (%s)", r.quoteIdentifier(column), strings.Join(placeholders, ",")))
 					args = append(args, v...)
 					argIndex += len(v)
 				default:
-					whereConditions = append(whereConditions, fmt.Sprintf("%s = $%d", column, argIndex))
+					whereConditions = append(whereConditions, fmt.Sprintf("%s = $%d", r.quoteIdentifier(column), argIndex))
 					args = append(args, v)
 					argIndex++
 				}
@@ -162,7 +166,7 @@ func (r *ItemRepository) GetAll(ctx context.Context, tableName string, filter *d
 
 	var selectColumns []string
 	for _, col := range columns {
-		selectColumns = append(selectColumns, fmt.Sprintf("%s::text as %s", col, col))
+		selectColumns = append(selectColumns, fmt.Sprintf("%s::text as %s", r.quoteIdentifier(col), r.quoteIdentifier(col)))
 	}
 
 	selectQuery := fmt.Sprintf("SELECT %s %s", strings.Join(selectColumns, ", "), baseQuery)
@@ -172,9 +176,9 @@ func (r *ItemRepository) GetAll(ctx context.Context, tableName string, filter *d
 		if strings.ToUpper(filter.Sort) == domains.SORT_DESC {
 			sort = domains.SORT_DESC
 		}
-		selectQuery += fmt.Sprintf(" ORDER BY %s %s", filter.OrderBy, sort)
+		selectQuery += fmt.Sprintf(" ORDER BY %s %s", r.quoteIdentifier(filter.OrderBy), sort)
 	} else {
-		selectQuery += fmt.Sprintf(" ORDER BY %s ASC", columns[0])
+		selectQuery += fmt.Sprintf(" ORDER BY %s ASC", r.quoteIdentifier(columns[0]))
 	}
 
 	if filter.Limit > 0 {
@@ -233,7 +237,7 @@ func (r *ItemRepository) Update(ctx context.Context, tableName string, id any, d
 			continue
 		}
 		if value, exists := data[col]; exists {
-			updateColumns = append(updateColumns, fmt.Sprintf("%s = $%d", col, paramIndex))
+			updateColumns = append(updateColumns, fmt.Sprintf("%s = $%d", r.quoteIdentifier(col), paramIndex))
 			values = append(values, value)
 			paramIndex++
 		}
@@ -247,9 +251,9 @@ func (r *ItemRepository) Update(ctx context.Context, tableName string, id any, d
 
 	query := fmt.Sprintf(
 		"UPDATE %s SET %s WHERE %s = $%d RETURNING *",
-		tableName,
+		r.quoteIdentifier(tableName),
 		strings.Join(updateColumns, ", "),
-		pkColumn,
+		r.quoteIdentifier(pkColumn),
 		paramIndex,
 	)
 
@@ -274,7 +278,7 @@ func (r *ItemRepository) Delete(ctx context.Context, tableName string, id any) e
 		pkColumn = "id"
 	}
 
-	query := fmt.Sprintf("DELETE FROM %s WHERE %s = $1", tableName, pkColumn)
+	query := fmt.Sprintf("DELETE FROM %s WHERE %s = $1", r.quoteIdentifier(tableName), r.quoteIdentifier(pkColumn))
 
 	result, err := r.db.Pool.Exec(ctx, query, id)
 	if err != nil {
