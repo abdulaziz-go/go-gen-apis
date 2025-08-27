@@ -437,8 +437,8 @@ func (r *ItemRepository) processColumnValue(value any, columnName, dataType stri
 		return nil
 	}
 
-	if dataType == "text[]" || dataType == "_text" || dataType == "TEXT[]" {
-		return r.parseTextArray(value)
+	if strings.HasSuffix(dataType, "[]") {
+		return r.parsePostgreSQLArray(value)
 	}
 
 	switch v := value.(type) {
@@ -452,20 +452,7 @@ func (r *ItemRepository) processColumnValue(value any, columnName, dataType stri
 	}
 }
 
-func (r *ItemRepository) columnExists(columns []string, column string) bool {
-	for _, col := range columns {
-		if col == column {
-			return true
-		}
-	}
-	return false
-}
-
-func (r *ItemRepository) quoteIdentifier(identifier string) string {
-	return fmt.Sprintf(`"%s"`, identifier)
-}
-
-func (r *ItemRepository) parseTextArray(value any) []string {
+func (r *ItemRepository) parsePostgreSQLArray(value any) []string {
 	if value == nil {
 		return []string{}
 	}
@@ -507,8 +494,23 @@ func (r *ItemRepository) parseTextArray(value any) []string {
 			current.WriteRune(char)
 		}
 	}
+
 	if current.Len() > 0 {
 		elements = append(elements, current.String())
 	}
+
 	return elements
+}
+
+func (r *ItemRepository) columnExists(columns []string, column string) bool {
+	for _, col := range columns {
+		if col == column {
+			return true
+		}
+	}
+	return false
+}
+
+func (r *ItemRepository) quoteIdentifier(identifier string) string {
+	return fmt.Sprintf(`"%s"`, identifier)
 }
