@@ -437,6 +437,10 @@ func (r *ItemRepository) processColumnValue(value any, columnName, dataType stri
 		return nil
 	}
 
+	if dataType == "text[]" || dataType == "_text" || dataType == "TEXT[]" {
+		return r.parseTextArray(value)
+	}
+
 	switch v := value.(type) {
 	case string:
 		return utils.ConvertStringToAppropriateType(v, dataType)
@@ -459,4 +463,52 @@ func (r *ItemRepository) columnExists(columns []string, column string) bool {
 
 func (r *ItemRepository) quoteIdentifier(identifier string) string {
 	return fmt.Sprintf(`"%s"`, identifier)
+}
+
+func (r *ItemRepository) parseTextArray(value any) []string {
+	if value == nil {
+		return []string{}
+	}
+
+	var strValue string
+	switch v := value.(type) {
+	case string:
+		strValue = v
+	case []byte:
+		strValue = string(v)
+	default:
+		return []string{}
+	}
+
+	if strValue == "{}" || strValue == "" {
+		return []string{}
+	}
+
+	if strings.HasPrefix(strValue, "{") && strings.HasSuffix(strValue, "}") {
+		strValue = strValue[1 : len(strValue)-1]
+	}
+
+	var elements []string
+	var current strings.Builder
+	inQuotes := false
+
+	for _, char := range strValue {
+		switch char {
+		case '"':
+			inQuotes = !inQuotes
+		case ',':
+			if !inQuotes {
+				elements = append(elements, current.String())
+				current.Reset()
+			} else {
+				current.WriteRune(char)
+			}
+		default:
+			current.WriteRune(char)
+		}
+	}
+	if current.Len() > 0 {
+		elements = append(elements, current.String())
+	}
+	return elements
 }
