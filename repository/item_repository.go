@@ -296,9 +296,10 @@ SELECT
     column_name, 
     data_type,
     udt_name,
-    CASE 
+    CASE
+        WHEN data_type = 'ARRAY' THEN (regexp_replace(udt_name, '^_', '') || '[]')
         WHEN data_type = 'USER-DEFINED' THEN udt_name
-        ELSE data_type 
+        ELSE data_type
     END as actual_type
 FROM information_schema.columns 
 WHERE table_name = $1 AND table_schema = 'public'
@@ -452,9 +453,9 @@ func (r *ItemRepository) processColumnValue(value any, columnName, dataType stri
 	}
 }
 
-func (r *ItemRepository) parsePostgreSQLArray(value any) []string {
+func (r *ItemRepository) parsePostgreSQLArray(value any) any {
 	if value == nil {
-		return []string{}
+		return nil
 	}
 
 	var strValue string
@@ -464,11 +465,11 @@ func (r *ItemRepository) parsePostgreSQLArray(value any) []string {
 	case []byte:
 		strValue = string(v)
 	default:
-		return []string{}
+		return value
 	}
 
 	if strValue == "{}" || strValue == "" {
-		return []string{}
+		return []any{}
 	}
 
 	if strings.HasPrefix(strValue, "{") && strings.HasSuffix(strValue, "}") {
@@ -478,25 +479,34 @@ func (r *ItemRepository) parsePostgreSQLArray(value any) []string {
 	var elements []string
 	var current strings.Builder
 	inQuotes := false
+	escaped := false
 
 	for _, char := range strValue {
-		switch char {
-		case '"':
+		switch {
+		case escaped:
+			current.WriteRune(char)
+			escaped = false
+		case char == '\\':
+			escaped = true
+			current.WriteRune(char)
+		case char == '"':
 			inQuotes = !inQuotes
-		case ',':
-			if !inQuotes {
-				elements = append(elements, current.String())
-				current.Reset()
-			} else {
-				current.WriteRune(char)
+		case char == ',' && !inQuotes:
+			element := strings.TrimSpace(current.String())
+			if element != "" {
+				elements = append(elements, element)
 			}
+			current.Reset()
 		default:
 			current.WriteRune(char)
 		}
 	}
 
 	if current.Len() > 0 {
-		elements = append(elements, current.String())
+		element := strings.TrimSpace(current.String())
+		if element != "" {
+			elements = append(elements, element)
+		}
 	}
 
 	return elements
