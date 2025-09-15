@@ -26,6 +26,7 @@ type ItemFilter struct {
 	OrderBy string         `json:"order_by" form:"order_by"`
 	Sort    string         `json:"sort" form:"sort"`
 	Filters map[string]any `json:"filters" form:"filters"`
+	Search  map[string]any `json:"search" form:"search"`
 }
 
 type ItemResponse struct {

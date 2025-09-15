@@ -110,7 +110,7 @@ func (h *ItemHandler) GetItems(c *gin.Context) {
 	filter.Sort = c.Query("sort")
 
 	for key, values := range c.Request.URL.Query() {
-		if key == "limit" || key == "offset" || key == "order_by" || key == "sort" {
+		if key == "limit" || key == "offset" || key == "order_by" || key == "sort" || key == "search" {
 			continue
 		}
 		if len(values) > 0 {
@@ -122,6 +122,16 @@ func (h *ItemHandler) GetItems(c *gin.Context) {
 					parsedVals = append(parsedVals, utils.ParseValue(v))
 				}
 				filter.Filters[key] = parsedVals
+			}
+		}
+	}
+
+	if searchValues, ok := c.Request.URL.Query()["search"]; ok && len(searchValues) > 0 {
+		filter.Search = make(map[string]any)
+		for _, v := range searchValues {
+			parts := strings.SplitN(v, ":", 2)
+			if len(parts) == 2 {
+				filter.Search[parts[0]] = utils.ParseValue(parts[1])
 			}
 		}
 	}

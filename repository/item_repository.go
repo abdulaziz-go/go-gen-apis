@@ -148,6 +148,21 @@ func (r *ItemRepository) GetAll(ctx context.Context, tableName string, filter *d
 		}
 	}
 
+	if filter.Search != nil && len(filter.Search) > 0 {
+		var searchConditions []string
+		for column, value := range filter.Search {
+			if r.columnExists(columns, column) {
+				searchConditions = append(searchConditions,
+					fmt.Sprintf("%s ILIKE $%d", r.quoteIdentifier(column), argIndex))
+				args = append(args, "%"+fmt.Sprint(value)+"%")
+				argIndex++
+			}
+		}
+		if len(searchConditions) > 0 {
+			whereConditions = append(whereConditions, "("+strings.Join(searchConditions, " OR ")+")")
+		}
+	}
+
 	if len(whereConditions) > 0 {
 		baseQuery += " WHERE " + strings.Join(whereConditions, " AND ")
 	}
@@ -446,6 +461,9 @@ func (r *ItemRepository) processColumnValue(value any, columnName, dataType stri
 	case string:
 		return utils.ConvertStringToAppropriateType(v, dataType)
 	case []byte:
+		if dataType == "uuid" {
+			return string(v)
+		}
 		strValue := string(v)
 		return utils.ConvertStringToAppropriateType(strValue, dataType)
 	default:

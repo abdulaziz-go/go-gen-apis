@@ -3,17 +3,9 @@
   <database-model serializer="dbm" dbms="POSTGRES" family-id="POSTGRES" format-version="4.53">
     <root id="1">
       <DateStyle>mdy</DateStyle>
-      <Grants>1||-9223372036854775808|c|G
-1||10|c|G
-1||10|C|G
-1||10|T|G
-4||-9223372036854775808|c|G
-4||10|c|G
-4||10|C|G
-4||10|T|G</Grants>
-      <IntrospectionStateNumber>779</IntrospectionStateNumber>
+      <IntrospectionStateNumber>789</IntrospectionStateNumber>
       <ServerVersion>17.6</ServerVersion>
-      <StartupTime>1756289990</StartupTime>
+      <StartupTime>1757920060</StartupTime>
       <TimeZones>true ACDT
 true ACSST
 false ACST
@@ -226,7 +218,7 @@ true America/Resolute
 false America/Rio_Branco
 true America/Santa_Isabel
 false America/Santarem
-false America/Santiago
+true America/Santiago
 false America/Santo_Domingo
 false America/Sao_Paulo
 true America/Scoresbysund
@@ -397,14 +389,14 @@ false CHAST
 false CHUT
 false CKT
 true CLST
-false CLT
+true CLT
 false COT
 false CST
 false CXT
 false DAVT
 false DDUT
-false EASST
-false EAST
+true EASST
+true EAST
 false EAT
 true EDT
 true EEST
@@ -611,7 +603,7 @@ false Pacific/Auckland
 false Pacific/Bougainville
 false Pacific/Chatham
 false Pacific/Chuuk
-false Pacific/Easter
+true Pacific/Easter
 false Pacific/Efate
 false Pacific/Fakaofo
 false Pacific/Fiji
@@ -708,7 +700,7 @@ true posixrules
 13283||10|C|G
 13283||-9223372036854775808|U|G
 13283||10|U|G</Grants>
-      <IntrospectionStateNumber>779</IntrospectionStateNumber>
+      <IntrospectionStateNumber>789</IntrospectionStateNumber>
       <ObjectId>5</ObjectId>
       <OwnerName>postgres</OwnerName>
     </database>
@@ -4130,8 +4122,8 @@ true posixrules
     <schema id="264" parent="2" name="public">
       <Comment>standard public schema</Comment>
       <Current>1</Current>
-      <IntrospectionStateNumber>779</IntrospectionStateNumber>
-      <LastIntrospectionLocalTimestamp>2025-08-27.10:25:16</LastIntrospectionLocalTimestamp>
+      <IntrospectionStateNumber>789</IntrospectionStateNumber>
+      <LastIntrospectionLocalTimestamp>2025-09-15.07:22:16</LastIntrospectionLocalTimestamp>
       <ObjectId>2200</ObjectId>
       <StateNumber>532</StateNumber>
       <OwnerName>pg_database_owner</OwnerName>
@@ -4144,13 +4136,55 @@ true posixrules
       <StoredType>integer|0s</StoredType>
       <OwnerName>postgres</OwnerName>
     </sequence>
-    <table id="266" parent="264" name="users">
+    <table id="266" parent="264" name="checkuuid">
+      <ObjectId>16400</ObjectId>
+      <StateNumber>788</StateNumber>
+      <AccessMethodId>2</AccessMethodId>
+      <OwnerName>postgres</OwnerName>
+    </table>
+    <table id="267" parent="264" name="users">
       <ObjectId>16389</ObjectId>
       <StateNumber>777</StateNumber>
       <AccessMethodId>2</AccessMethodId>
       <OwnerName>postgres</OwnerName>
     </table>
-    <column id="267" parent="266" name="id">
+    <column id="268" parent="266" name="id">
+      <DefaultExpression>gen_random_uuid()</DefaultExpression>
+      <NotNull>1</NotNull>
+      <Position>1</Position>
+      <StateNumber>783</StateNumber>
+      <StoredType>uuid|0s</StoredType>
+      <TypeId>2950</TypeId>
+    </column>
+    <column id="269" parent="266" name="title">
+      <Position>2</Position>
+      <StateNumber>783</StateNumber>
+      <StoredType>varchar|0s</StoredType>
+      <TypeId>1043</TypeId>
+    </column>
+    <column id="270" parent="266" name="tagsname">
+      <Position>3</Position>
+      <StateNumber>788</StateNumber>
+      <StoredType>varchar|0s</StoredType>
+      <TypeId>1043</TypeId>
+    </column>
+    <index id="271" parent="266" name="checkuuid_pkey">
+      <ColNames>id</ColNames>
+      <NameSurrogate>1</NameSurrogate>
+      <ObjectId>16406</ObjectId>
+      <Primary>1</Primary>
+      <StateNumber>783</StateNumber>
+      <Unique>1</Unique>
+      <AccessMethodId>403</AccessMethodId>
+    </index>
+    <key id="272" parent="266" name="checkuuid_pkey">
+      <NameSurrogate>1</NameSurrogate>
+      <ObjectId>16407</ObjectId>
+      <Primary>1</Primary>
+      <StateNumber>783</StateNumber>
+      <UnderlyingIndexId>16406</UnderlyingIndexId>
+    </key>
+    <column id="273" parent="267" name="id">
       <DefaultExpression>nextval(&apos;users_id_seq&apos;::regclass)</DefaultExpression>
       <NotNull>1</NotNull>
       <Position>1</Position>
@@ -4159,41 +4193,41 @@ true posixrules
       <SequenceId>16388</SequenceId>
       <TypeId>23</TypeId>
     </column>
-    <column id="268" parent="266" name="name">
+    <column id="274" parent="267" name="name">
       <NotNull>1</NotNull>
       <Position>2</Position>
       <StateNumber>752</StateNumber>
       <StoredType>varchar(100)|0s</StoredType>
       <TypeId>1043</TypeId>
     </column>
-    <column id="269" parent="266" name="email">
+    <column id="275" parent="267" name="email">
       <NotNull>1</NotNull>
       <Position>3</Position>
       <StateNumber>752</StateNumber>
       <StoredType>varchar(150)|0s</StoredType>
       <TypeId>1043</TypeId>
     </column>
-    <column id="270" parent="266" name="password">
+    <column id="276" parent="267" name="password">
       <NotNull>1</NotNull>
       <Position>4</Position>
       <StateNumber>752</StateNumber>
       <StoredType>varchar(255)|0s</StoredType>
       <TypeId>1043</TypeId>
     </column>
-    <column id="271" parent="266" name="created_at">
+    <column id="277" parent="267" name="created_at">
       <DefaultExpression>CURRENT_TIMESTAMP</DefaultExpression>
       <Position>5</Position>
       <StateNumber>752</StateNumber>
       <StoredType>timestamp|0s</StoredType>
       <TypeId>1114</TypeId>
     </column>
-    <column id="272" parent="266" name="textcolumn">
+    <column id="278" parent="267" name="textcolumn">
       <Position>6</Position>
       <StateNumber>777</StateNumber>
       <StoredType>text[]|0s</StoredType>
       <TypeId>1009</TypeId>
     </column>
-    <index id="273" parent="266" name="users_pkey">
+    <index id="279" parent="267" name="users_pkey">
       <ColNames>id</ColNames>
       <NameSurrogate>1</NameSurrogate>
       <ObjectId>16396</ObjectId>
@@ -4202,7 +4236,7 @@ true posixrules
       <Unique>1</Unique>
       <AccessMethodId>403</AccessMethodId>
     </index>
-    <index id="274" parent="266" name="users_email_key">
+    <index id="280" parent="267" name="users_email_key">
       <ColNames>email</ColNames>
       <NameSurrogate>1</NameSurrogate>
       <ObjectId>16398</ObjectId>
@@ -4213,14 +4247,14 @@ true posixrules
       <CollationIds>100</CollationIds>
       <CollationParentNames>pg_catalog</CollationParentNames>
     </index>
-    <key id="275" parent="266" name="users_pkey">
+    <key id="281" parent="267" name="users_pkey">
       <NameSurrogate>1</NameSurrogate>
       <ObjectId>16397</ObjectId>
       <Primary>1</Primary>
       <StateNumber>752</StateNumber>
       <UnderlyingIndexId>16396</UnderlyingIndexId>
     </key>
-    <key id="276" parent="266" name="users_email_key">
+    <key id="282" parent="267" name="users_email_key">
       <NameSurrogate>1</NameSurrogate>
       <ObjectId>16399</ObjectId>
       <StateNumber>752</StateNumber>
