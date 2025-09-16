@@ -148,19 +148,15 @@ func (r *ItemRepository) GetAll(ctx context.Context, tableName string, filter *d
 		}
 	}
 
-	if filter.Search != nil && len(filter.Search) > 0 {
+	if filter.Search != "" {
 		var searchConditions []string
-		for column, value := range filter.Search {
-			if r.columnExists(columns, column) {
-				searchConditions = append(searchConditions,
-					fmt.Sprintf("%s ILIKE $%d", r.quoteIdentifier(column), argIndex))
-				args = append(args, "%"+fmt.Sprint(value)+"%")
-				argIndex++
-			}
+		for _, col := range columns {
+			searchConditions = append(searchConditions,
+				fmt.Sprintf("%s::text ILIKE $%d", r.quoteIdentifier(col), argIndex))
 		}
-		if len(searchConditions) > 0 {
-			whereConditions = append(whereConditions, "("+strings.Join(searchConditions, " OR ")+")")
-		}
+		args = append(args, "%"+fmt.Sprint(filter.Search)+"%")
+		whereConditions = append(whereConditions, "("+strings.Join(searchConditions, " OR ")+")")
+		argIndex++
 	}
 
 	if len(whereConditions) > 0 {

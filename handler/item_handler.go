@@ -126,16 +126,8 @@ func (h *ItemHandler) GetItems(c *gin.Context) {
 		}
 	}
 
-	if searchValues, ok := c.Request.URL.Query()["search"]; ok && len(searchValues) > 0 {
-		filter.Search = make(map[string]any)
-		for _, v := range searchValues {
-			parts := strings.SplitN(v, ":", 2)
-			if len(parts) == 2 {
-				filter.Search[parts[0]] = utils.ParseValue(parts[1])
-			}
-		}
-	}
-
+	searchValue := c.Query("search")
+	filter.Search = searchValue
 	items, total, err := h.service.GetItems(c.Request.Context(), tableName, filter)
 	if err != nil {
 		logrus.Errorf("handler: failed to get items: %v", err)
